@@ -88,10 +88,10 @@ def rotate_cake(center, radius, num_divisions):
                     print(f"目標角度 {target_angle}度に到達。誤差 {angle_error}度")
                     send_command_to_esp32("UP_to_DOWN")
 
-                    # ESP32からStanbyを受信するまで待機
+                    # ESP32からStandbyを受信するまで待機
                     while True:
                         standby_command = receive_command_from_esp32()
-                        if standby_command == "Stanby":
+                        if standby_command == "Standby":
                             print("次の目標角度に進みます。")
                             break
                     break
