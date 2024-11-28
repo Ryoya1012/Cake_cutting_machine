@@ -7,9 +7,18 @@ import time
 # グローバル変数
 previous_angle = None
 cumulative_rotation = 0
+esp32 = None
 
 # ESP32とのシリアル通信設定
-esp32 = serial.Serial(port='COM3', baudrate=115200, timeout=1)  # 適切なポート番号に変更
+def initialize_esp32(port='COM3', baudrate=115200, timeout=1):
+    global esp32
+    try:
+        esp32 = serial.Serial(port=port, baudrate=baudrate, timeout=timeout)
+        print("ESP32に接続しました。")
+    except serial.SerialException as e:
+        print(f"ESP32接続エラー: {e}")
+        print("プログラムを終了します。")
+        exit()
 
 # 分割線を描画する関数
 def draw_dividing_lines(frame, center, radius, num_divisions, rotation_offset):
@@ -87,6 +96,8 @@ def rotate_cake(center, radius, num_divisions):
 # メイン処理
 def main():
     global cumulative_rotation
+
+    initialize_esp32(port='COM3')  # ESP32を初期化
 
     num_divisions = int(input("ケーキを何等分にしますか？: "))
 
