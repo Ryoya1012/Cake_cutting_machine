@@ -7,9 +7,17 @@ import time
 # グローバル変数
 previous_angle = None
 cumulative_rotation = 0
+ALLOWED_ANGLE_ERROR = 10  # 許容誤差を10度と仮定
 
-# ESP32とのシリアル通信設定
-esp32 = serial.Serial(port='COM3', baudrate=115200, timeout=1)  # 適切なポート番号に変更
+# ESP32とのシリアル通信を初期化
+def initialize_esp32():
+    try:
+        esp32 = serial.Serial(port='COM3', baudrate=115200, timeout=1)
+        print("ESP32に接続しました。")
+        return esp32
+    except serial.SerialException as e:
+        print(f"ESP32に接続できません: {e}")
+        exit()
 
 # 分割線を描画する関数
 def draw_dividing_lines(frame, center, radius, num_divisions, rotation_offset):
@@ -70,26 +78,44 @@ def rotate_cake(center, radius, num_divisions):
             # ESP32から回転完了の確認を受信
             command = receive_command_from_esp32()
             if command == "READY":
-                break
+                # 現在の回転角度を計算
+                reference_point = (center[0], center[1] - radius)
+                current_angle = calculate_rotation_angle(center, reference_point)
+                
+                # 許容誤差内か確認
+                angle_error = abs(target_angle - current_angle)
+                if angle_error <= ALLOWED_ANGLE_ERROR:
+                    print(f"目標角度 {target_angle}度に到達。誤差 {angle_error}度")
+                    send_command_to_esp32("UP_to_DOWN")
 
-            # 現在の回転角度を計算
-            reference_point = (center[0], center[1] - radius)
-            current_angle = calculate_rotation_angle(center, reference_point)
-            angle_error = abs(target_angle - current_angle)
-
-            # 誤差が10%以上の場合、補正角度をESP32に送信
-            if angle_error > 10:
-                send_command_to_esp32("CORRECT", current_angle)
-
-        print(f"目標角度: {target_angle}度に到達")
+                    # ESP32からStandbyを受信するまで待機
+                    while True:
+                        standby_command = receive_command_from_esp32()
+                        if standby_command == "Standby":
+                            print("次の目標角度に進みます。")
+                            break
+                    break
+                else:
+                    print(f"目標角度 {target_angle}度に未到達。誤差 {angle_error}度")
+                    send_command_to_esp32("CORRECT", current_angle)
+            else:
+                # 他のESP32コマンドが来た場合はログを出力
+                print(f"未処理のコマンド受信: {command}")
+        
         send_command_to_esp32("COMPLETE", target_angle)
+        print(f"目標角度 {target_angle}度を完了。次の分割へ。")
 
 # メイン処理
 def main():
-    global cumulative_rotation
+    global esp32, cumulative_rotation
 
+    # ESP32との接続を初期化
+    esp32 = initialize_esp32()
+
+    # 分割数を取得
     num_divisions = int(input("ケーキを何等分にしますか？: "))
 
+    # カメラを起動
     cap = cv2.VideoCapture(1)  # ウェブカメラ
     if not cap.isOpened():
         print("ウェブカメラが見つかりません。")

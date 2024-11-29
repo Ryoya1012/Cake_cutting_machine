@@ -23,6 +23,8 @@ void loop() {
       String angle_str = str.substring(colonIndex + 1); //コロンの後の文字列(角度部分)
 
       //角度部分が数値に変換できるか確認
+      //PCから送信されるもの TARGET:x(x:回転角度)
+      //                    目標回転角度に対して10%以上誤差がある場合は CORRECT:x(x:回転角度)
       if(isNumber(angle_str))
       {
         target_angle = angle_str.toFloat(); //角度を浮動小数点に変換
