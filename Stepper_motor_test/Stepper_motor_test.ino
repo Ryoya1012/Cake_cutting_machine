@@ -1,7 +1,3 @@
-//2024年11月29日
-//Author Wataru ONISHI 
-//All rights reserved
-
 #include <Arduino.h>
 #include <SPI.h>
 
