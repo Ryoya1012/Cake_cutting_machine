@@ -1,95 +1,107 @@
-// ピン定義（必要に応じて変更可能）
-#define PWM_PIN 16           // PWM信号ピン
-#define DIR_PIN 17           // 回転方向ピン
-#define LIMIT_SWITCH_A 18    // リミットスイッチA
-#define LIMIT_SWITCH_B 19    // リミットスイッチB
+// ピン定義
+#define PWM_A_PIN 27           // モータードライバのPWM Aピン
+#define PWM_B_PIN 14           // モータードライバのPWM Bピン
+#define LIMIT_SWITCH_A 26      // リミットスイッチAのピン
+#define LIMIT_SWITCH_B 32      // リミットスイッチBのピン
 
 // PWM設定
-#define PWM_CHANNEL 0
-#define PWM_FREQUENCY 5000   // 5kHz
-#define PWM_RESOLUTION 8     // 8ビット
-#define PWM_DUTY_CYCLE 200   // デフォルトのPWMデューティサイクル (0-255)
+#define PWM_CHANNEL_A 0        // PWMチャンネルA
+#define PWM_CHANNEL_B 1        // PWMチャンネルB
+#define PWM_FREQUENCY 5000     // 5kHz
+#define PWM_RESOLUTION 8       // 8ビット
+#define PWM_DUTY_CYCLE 200     // PWMのデューティサイクル (0-255)
 
-// 状態変数
-bool switchA_pressed = false;
-bool switchB_pressed = false;
-bool moving_forward = false;
-bool moving_backward = false;
+// グローバル変数
+bool direction = true;        // true: 正転, false: 逆転
+bool motor_running = true;    // モーターが動作中かどうか
+bool switchA_pressed = false; // スイッチAが押されているか
+bool switchB_pressed = false; // スイッチBが押されているか
 
 void setup() {
-  // ピンモード設定
-  pinMode(PWM_PIN, OUTPUT);
-  pinMode(DIR_PIN, OUTPUT);
+  // シリアル通信初期化
+  Serial.begin(115200);
+  Serial.println("Motor Control Initialized");
+
+  // PWMの初期化
+  ledcSetup(PWM_CHANNEL_A, PWM_FREQUENCY, PWM_RESOLUTION);
+  ledcSetup(PWM_CHANNEL_B, PWM_FREQUENCY, PWM_RESOLUTION);
+
+  // PWMチャンネルをピンにアタッチ
+  ledcAttachPin(PWM_A_PIN, PWM_CHANNEL_A);
+  ledcAttachPin(PWM_B_PIN, PWM_CHANNEL_B);
+
+  // スイッチのピンを設定
   pinMode(LIMIT_SWITCH_A, INPUT_PULLUP);
   pinMode(LIMIT_SWITCH_B, INPUT_PULLUP);
 
-  // PWM初期化
-  ledcSetup(PWM_CHANNEL, PWM_FREQUENCY, PWM_RESOLUTION);
-  ledcAttachPin(PWM_PIN, PWM_CHANNEL);
-  ledcWrite(PWM_CHANNEL, 0); // モーター停止
-
-  // シリアル通信初期化
-  Serial.begin(115200);
-  Serial.println("System Initialized");
+  // モーターを停止状態で初期化
+  stopMotor();
 }
 
 void loop() {
+  // 正転の場合はスイッチAのみ確認
+  if (direction) {
+    if (digitalRead(LIMIT_SWITCH_A) == LOW) { // スイッチAが押された場合
+      if (!switchA_pressed) { // 押された瞬間のみ処理
+        stopMotor();
+        Serial.println("Switch A activated. Motor stopped.");
+        switchA_pressed = true;
+      }
+    } else {
+      switchA_pressed = false; // スイッチAが押されていない状態を記録
+    }
+  }
+
+  // 逆転の場合はスイッチBのみ確認
+  if (!direction) {
+    if (digitalRead(LIMIT_SWITCH_B) == LOW) { // スイッチBが押された場合
+      if (!switchB_pressed) { // 押された瞬間のみ処理
+        stopMotor();
+        Serial.println("Switch B activated. Motor stopped.");
+        switchB_pressed = true;
+      }
+    } else {
+      switchB_pressed = false; // スイッチBが押されていない状態を記録
+    }
+  }
+
   // シリアル通信からの入力処理
   if (Serial.available()) {
     String command = Serial.readStringUntil('\n');
     command.trim();
-    if (command == "A") {
-      startForward();
-    } else if (command == "B") {
-      startBackward();
+    if (command.length() > 0) {
+      reverseMotor(); // 入力があればモーターの方向を反転して再開
     }
   }
 
-  // リミットスイッチAの処理
-  if (digitalRead(LIMIT_SWITCH_A) == LOW && !switchA_pressed) {
-    switchA_pressed = true;
-    stopMotor();
-    Serial.println("Limit Switch A activated");
-  } else if (digitalRead(LIMIT_SWITCH_A) == HIGH && switchA_pressed) {
-    switchA_pressed = false;
-  }
-
-  // リミットスイッチBの処理
-  if (digitalRead(LIMIT_SWITCH_B) == LOW && !switchB_pressed) {
-    switchB_pressed = true;
-    stopMotor();
-    Serial.println("Limit Switch B activated");
-  } else if (digitalRead(LIMIT_SWITCH_B) == HIGH && switchB_pressed) {
-    switchB_pressed = false;
+  // モーターが動作中の場合のみPWMを出力
+  if (motor_running) {
+    if (direction) {
+      // 正転
+      ledcWrite(PWM_CHANNEL_A, PWM_DUTY_CYCLE);
+      ledcWrite(PWM_CHANNEL_B, 0);
+    } else {
+      // 逆転
+      ledcWrite(PWM_CHANNEL_A, 0);
+      ledcWrite(PWM_CHANNEL_B, PWM_DUTY_CYCLE);
+    }
   }
 }
 
-// モーターを前進させる
-void startForward() {
-  if (!switchA_pressed) { // リミットスイッチAが押されていない場合のみ動作
-    digitalWrite(DIR_PIN, HIGH);
-    ledcWrite(PWM_CHANNEL, PWM_DUTY_CYCLE);
-    moving_forward = true;
-    moving_backward = false;
-    Serial.println("Motor moving forward");
-  }
-}
-
-// モーターを後退させる
-void startBackward() {
-  if (!switchB_pressed) { // リミットスイッチBが押されていない場合のみ動作
-    digitalWrite(DIR_PIN, LOW);
-    ledcWrite(PWM_CHANNEL, PWM_DUTY_CYCLE);
-    moving_backward = true;
-    moving_forward = false;
-    Serial.println("Motor moving backward");
-  }
-}
-
-// モーターを停止させる
+// モーターを停止する
 void stopMotor() {
-  ledcWrite(PWM_CHANNEL, 0); // PWM信号を0にして停止
-  moving_forward = false;
-  moving_backward = false;
-  Serial.println("Motor stopped");
+  ledcWrite(PWM_CHANNEL_A, 0);
+  ledcWrite(PWM_CHANNEL_B, 0);
+  motor_running = false;
+}
+
+// モーターの方向を反転して再開する
+void reverseMotor() {
+  direction = !direction; // 方向を反転
+  motor_running = true;   // モーターを再開
+  if (direction) {
+    Serial.println("Motor restarted: Forward");
+  } else {
+    Serial.println("Motor restarted: Backward");
+  }
 }
