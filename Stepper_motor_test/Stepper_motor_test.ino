@@ -12,7 +12,7 @@ float currentAngle = 0;
 
 void setup() {
   delay(1000);
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   // SPI通信のピンの準備
   pinMode(PIN_SPI_MOSI, OUTPUT);
@@ -83,7 +83,7 @@ void moveToAngle(float targetAngle) {
   float angleDifference = targetAngle - currentAngle;
 
   // 必要なステップ数を計算 (1ステップ = 1.8度)
-  int steps = angleDifference / 0.6;
+  int steps = angleDifference / 0.45;
 
   // 回転方向を決定
   bool direction = steps > 0; // 正方向: true, 逆方向: false
