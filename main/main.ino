@@ -28,7 +28,7 @@ bool direction = true;         // true: 正転, false: 逆転
 bool switch_A_enabled = true;  // スイッチAが有効かどうか
 bool switch_B_enabled = true;  // スイッチBが有効かどうか
 String str;                    // シリアルデータの文字列
-float target_angle;            // サーボモータの目標角度
+float target_angle;            // ステッピングモータの目標角度
 float currentAngle_A = 0;      // ステッピングモータAの現在角度
 float currentAngle_B = 0;      // ステッピングモータBの現在角度
 
@@ -99,11 +99,9 @@ void loop() {
         float angle = angle_str.toFloat();
         if (command == "A") {
           moveToAngle(PIN_SPI_SS_A, currentAngle_A, angle); // モータAを指定角度に回転
-          currentAngle_A = angle;
           validCommand = true;
         } else if (command == "B") {
           moveToAngle(PIN_SPI_SS_B, currentAngle_B, angle); // モータBを指定角度に回転
-          currentAngle_B = angle;
           validCommand = true;
         } else {
           Serial.println("Invalid motor command.");
@@ -167,13 +165,10 @@ void moveToAngle(int ssPin, float &currentAngle, float targetAngle) {
   float angleDifference = targetAngle - currentAngle;
 
   // 必要なステップ数を計算
-  int steps = angleDifference / STEP_ANGLE;
+  int steps = abs(angleDifference) / STEP_ANGLE;
 
   // 回転方向を決定
-  bool direction = steps > 0;
-
-  // ステップ数を絶対値に変換
-  steps = abs(steps);
+  bool direction = angleDifference > 0;
 
   // 指定されたステップ数分モータを回転
   for (int i = 0; i < steps; i++) {
@@ -181,7 +176,7 @@ void moveToAngle(int ssPin, float &currentAngle, float targetAngle) {
     L6470_send(0x00, ssPin);                   // スピードデータ上位バイト
     L6470_send(0x20, ssPin);                   // スピードデータ中位バイト
     L6470_send(0x00, ssPin);                   // スピードデータ下位バイト
-    delay(1);                                  // ステップ間の遅延（調整可能）
+    delay(1);                                  // ステップ間の遅延
   }
 
   // 現在角度を更新
@@ -189,7 +184,7 @@ void moveToAngle(int ssPin, float &currentAngle, float targetAngle) {
 
   // モータ停止
   L6470_send(0xB8, ssPin); // ハードストップ
-  Serial.print("Motor moved to ");
+  Serial.print("Motor moved to absolute ");
   Serial.print(targetAngle);
   Serial.println(" degrees.");
 }
