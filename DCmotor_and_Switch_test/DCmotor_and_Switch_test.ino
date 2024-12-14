@@ -14,8 +14,8 @@
 // グローバル変数
 bool motor_running = false;    // モーターが動作中かどうか
 bool direction = true;         // true: 正転, false: 逆転
-bool wait_for_B = false;       // スイッチBを待機中
-bool wait_for_A = false;       // スイッチAを待機中
+bool switch_A_enabled = true;  // スイッチAが有効かどうか
+bool switch_B_enabled = true;  // スイッチBが有効かどうか
 
 void setup() {
   // シリアル通信初期化
@@ -40,19 +40,21 @@ void setup() {
 
 void loop() {
   // スイッチAの確認
-  if (digitalRead(LIMIT_SWITCH_A) == HIGH) {
+  if (digitalRead(LIMIT_SWITCH_A) == HIGH && switch_A_enabled) {
     if (motor_running && direction) { // 正転中にスイッチAが反応
       stopMotor();
-      wait_for_B = true; // スイッチBの反応を待機
+      switch_A_enabled = false; // スイッチAを無効化
+      switch_B_enabled = true;  // スイッチBを有効化
       Serial.println("Switch A activated. Waiting for Switch B.");
     }
   }
 
   // スイッチBの確認
-  if (digitalRead(LIMIT_SWITCH_B) == HIGH) {
+  if (digitalRead(LIMIT_SWITCH_B) == HIGH && switch_B_enabled) {
     if (motor_running && !direction) { // 逆転中にスイッチBが反応
       stopMotor();
-      wait_for_A = true; // スイッチAの反応を待機
+      switch_B_enabled = false; // スイッチBを無効化
+      switch_A_enabled = true;  // スイッチAを有効化
       Serial.println("Switch B activated. Waiting for Switch A.");
     }
   }
@@ -62,19 +64,17 @@ void loop() {
     String command = Serial.readStringUntil('\n');
     command.trim(); // 空白文字を削除
 
-    if (wait_for_B) {
-      // スイッチB待機中は "down" のみ受け付ける
+    if (switch_B_enabled) {
+      // スイッチB有効時に "down" コマンドを受け付ける
       if (command == "down") {
         startBackward();
-        wait_for_B = false;
       } else {
         Serial.println("Invalid command. Waiting for Switch B.");
       }
-    } else if (wait_for_A) {
-      // スイッチA待機中は "up" のみ受け付ける
+    } else if (switch_A_enabled) {
+      // スイッチA有効時に "up" コマンドを受け付ける
       if (command == "up") {
         startForward();
-        wait_for_A = false;
       } else {
         Serial.println("Invalid command. Waiting for Switch A.");
       }
