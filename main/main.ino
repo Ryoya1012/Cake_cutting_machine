@@ -87,6 +87,7 @@ void loop() {
   if (Serial.available() > 0) {
     str = Serial.readString();
     str.trim();
+    bool validCommand = false;
 
     // コマンドのフォーマットにコロンが含まれている場合
     if (str.indexOf(':') != -1) {
@@ -99,9 +100,11 @@ void loop() {
         if (command == "A") {
           moveToAngle(PIN_SPI_SS_A, currentAngle_A, angle); // モータAを指定角度に回転
           currentAngle_A = angle;
+          validCommand = true;
         } else if (command == "B") {
           moveToAngle(PIN_SPI_SS_B, currentAngle_B, angle); // モータBを指定角度に回転
           currentAngle_B = angle;
+          validCommand = true;
         } else {
           Serial.println("Invalid motor command.");
         }
@@ -112,8 +115,10 @@ void loop() {
       // up, down コマンドの処理
       if (str == "up") {
         startForward();
+        validCommand = true;
       } else if (str == "down") {
         startBackward();
+        validCommand = true;
       } else if (str == "test") {
         // モータ駆動のテスト
         startForward();
@@ -122,10 +127,16 @@ void loop() {
         startBackward();
         delay(1000); // 1秒間逆転
         stopMotor();
+        validCommand = true;
         Serial.println("test OK");
       } else {
         Serial.println("Unknown command.");
+        Serial.println(str);
       }
+    }
+
+    if (validCommand) {
+      Serial.println("READY");
     }
   }
 }
