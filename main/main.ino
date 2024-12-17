@@ -151,35 +151,50 @@ void loop() {
 }
 
 void executeSequence() {
-  // 1. ステッピングモーターBを-60度に回転
-  moveToAngle(PIN_SPI_SS_B, currentAngle_B, -120);
+  Serial.println("Starting sequence...");
 
-  // 2. downコマンドと同じ動作
-  startBackward();
+  // 1. ステッピングモーターBを-60度に回転
+  Serial.println("Sequence Step 1: Moving Motor B to -60 degrees");
+  moveToAngle(PIN_SPI_SS_B, currentAngle_B, -80);
+
+  // 2. down動作を開始しつつ、6秒後にステッピングモーターBを0度に移動
+  Serial.println("Sequence Step 2: Starting down command and scheduling Motor B to 0 degrees");
+  startBackward(); // DCモーターをdown方向に回転
+  unsigned long startTime = millis();
+  bool motorB_moved = false;
+
   while (motor_running) {
+    // 6秒後にステッピングモーターBを0度に移動
+    if (!motorB_moved && millis() - startTime >= 4000) {
+      Serial.println("Sequence Step 3: Moving Motor B to 0 degrees");
+      moveToAngle(PIN_SPI_SS_B, currentAngle_B, 0);
+      motorB_moved = true;
+    }
+
+    // スイッチBの反応を確認
     if (digitalRead(LIMIT_SWITCH_B) == HIGH && switch_B_enabled) {
       stopMotor();
       switch_B_enabled = false;
       switch_A_enabled = true;
+      Serial.println("Switch B activated. Stopping down command.");
       break;
     }
   }
 
-  // 3. ステッピングモーターBを0度に回転
-  moveToAngle(PIN_SPI_SS_B, currentAngle_B, 0);
-
-  // 4. upコマンドと同じ動作
+  // 4. upコマンド
+  Serial.println("Sequence Step 4: Executing up command");
   startForward();
   while (motor_running) {
     if (digitalRead(LIMIT_SWITCH_A) == HIGH && switch_A_enabled) {
       stopMotor();
       switch_A_enabled = false;
       switch_B_enabled = true;
+      Serial.println("Switch A activated. Stopping up command.");
       break;
     }
   }
 
-  // 5. READYを送信
+  // シーケンス完了
   Serial.println("Sequence Complete. READY");
 }
 
