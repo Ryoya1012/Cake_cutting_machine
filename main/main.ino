@@ -17,10 +17,10 @@
 #define PWM_CHANNEL_B 1        // PWMチャンネルB
 #define PWM_FREQUENCY 5000     // 5kHz
 #define PWM_RESOLUTION 8       // 8ビット
-#define PWM_DUTY_CYCLE 100     // PWMのデューティサイクル (0-255)
+#define PWM_DUTY_CYCLE 50     // PWMのデューティサイクル (0-255)
 
 // ステッピングモータ設定
-#define STEP_ANGLE 0.1        // 1ステップ当たりの角度（度）
+#define STEP_ANGLE 0.11        // 1ステップ当たりの角度（度）
 
 // グローバル変数
 bool motor_running = false;    // モーターが動作中かどうか
@@ -119,6 +119,12 @@ void loop() {
         validCommand = true;
       } else if (str == "stop") {
         stopMotor(); // モーター停止
+        validCommand = true;
+      } else if (str == "state") {
+        Serial.print("Switch A enabled: ");
+        Serial.println(switch_A_enabled ? "true" : "false");
+        Serial.print("Switch B enabled: ");
+        Serial.println(switch_B_enabled ? "true" : "false");
         validCommand = true;
       } else if (str == "test") {
         // モータ駆動のテスト
