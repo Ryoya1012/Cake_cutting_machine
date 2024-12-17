@@ -17,7 +17,7 @@
 #define PWM_CHANNEL_B 1        // PWMチャンネルB
 #define PWM_FREQUENCY 5000     // 5kHz
 #define PWM_RESOLUTION 8       // 8ビット
-#define PWM_DUTY_CYCLE 50     // PWMのデューティサイクル (0-255)
+#define PWM_DUTY_CYCLE 100     // PWMのデューティサイクル (0-255)
 
 // ステッピングモータ設定
 #define STEP_ANGLE 0.11        // 1ステップ当たりの角度（度）
@@ -100,6 +100,8 @@ void loop() {
         if (command == "A") {
           moveToAngle(PIN_SPI_SS_A, currentAngle_A, angle); // モータAを指定角度に回転
           validCommand = true;
+          // シーケンス動作を実行
+          executeSequence();
         } else if (command == "B") {
           moveToAngle(PIN_SPI_SS_B, currentAngle_B, angle); // モータBを指定角度に回転
           validCommand = true;
@@ -146,6 +148,39 @@ void loop() {
       Serial.println("READY");
     }
   }
+}
+
+void executeSequence() {
+  // 1. ステッピングモーターBを-60度に回転
+  moveToAngle(PIN_SPI_SS_B, currentAngle_B, -120);
+
+  // 2. downコマンドと同じ動作
+  startBackward();
+  while (motor_running) {
+    if (digitalRead(LIMIT_SWITCH_B) == HIGH && switch_B_enabled) {
+      stopMotor();
+      switch_B_enabled = false;
+      switch_A_enabled = true;
+      break;
+    }
+  }
+
+  // 3. ステッピングモーターBを0度に回転
+  moveToAngle(PIN_SPI_SS_B, currentAngle_B, 0);
+
+  // 4. upコマンドと同じ動作
+  startForward();
+  while (motor_running) {
+    if (digitalRead(LIMIT_SWITCH_A) == HIGH && switch_A_enabled) {
+      stopMotor();
+      switch_A_enabled = false;
+      switch_B_enabled = true;
+      break;
+    }
+  }
+
+  // 5. READYを送信
+  Serial.println("Sequence Complete. READY");
 }
 
 // SPI通信で値を送信する関数
