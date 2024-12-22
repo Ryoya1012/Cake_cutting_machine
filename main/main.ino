@@ -13,11 +13,9 @@
 #define PIN_SPI_SS_B 16        // ステッピングモータB用 SPI SS
 
 // PWM設定
-#define PWM_CHANNEL_A 0        // PWMチャンネルA
-#define PWM_CHANNEL_B 1        // PWMチャンネルB
 #define PWM_FREQUENCY 5000     // 5kHz
 #define PWM_RESOLUTION 8       // 8ビット
-#define PWM_DUTY_CYCLE 100     // PWMのデューティサイクル (0-255)
+#define PWM_DUTY_CYCLE 90     // PWMのデューティサイクル (0-255)
 
 // ステッピングモータ設定
 #define STEP_ANGLE 0.11        // 1ステップ当たりの角度（度）
@@ -38,10 +36,14 @@ void setup() {
   Serial.println("System Initialized");
 
   // モータードライバPWMの初期化
-  ledcSetup(PWM_CHANNEL_A, PWM_FREQUENCY, PWM_RESOLUTION);
-  ledcSetup(PWM_CHANNEL_B, PWM_FREQUENCY, PWM_RESOLUTION);
-  ledcAttachPin(PWM_A_PIN, PWM_CHANNEL_A);
-  ledcAttachPin(PWM_B_PIN, PWM_CHANNEL_B);
+  if (!ledcAttach(PWM_A_PIN, PWM_FREQUENCY, PWM_RESOLUTION)) {
+    Serial.println("Failed to attach PWM to pin A");
+  }
+
+  if (!ledcAttach(PWM_B_PIN, PWM_FREQUENCY, PWM_RESOLUTION)) {
+    Serial.println("Failed to attach PWM to pin B");
+  }
+
   pinMode(LIMIT_SWITCH_A, INPUT);
   pinMode(LIMIT_SWITCH_B, INPUT);
   stopMotor();
@@ -151,45 +153,30 @@ void loop() {
 }
 
 void executeSequence() {
-  Serial.println("Starting sequence...");
-
   // 1. ステッピングモーターBを-60度に回転
-  Serial.println("Sequence Step 1: Moving Motor B to -110 degrees");
   moveToAngle(PIN_SPI_SS_B, currentAngle_B, -120);
 
-  // 2. down動作を開始しつつ、6秒後にステッピングモーターBを0度に移動
-  Serial.println("Sequence Step 2: Starting down command and scheduling Motor B to 0 degrees");
-  startBackward(); // DCモーターをdown方向に回転
-  unsigned long startTime = millis();
-  bool motorB_moved = false;
-
+  // 2. downコマンドと同じ動作
+  startBackward();
   while (motor_running) {
-    // 6秒後にステッピングモーターBを0度に移動
-    if (!motorB_moved && millis() - startTime >= 4000) {
-      Serial.println("Sequence Step 3: Moving Motor B to 0 degrees");
-      moveToAngle(PIN_SPI_SS_B, currentAngle_B, 0);
-      motorB_moved = true;
-    }
-
-    // スイッチBの反応を確認
     if (digitalRead(LIMIT_SWITCH_B) == HIGH && switch_B_enabled) {
       stopMotor();
       switch_B_enabled = false;
       switch_A_enabled = true;
-      Serial.println("Switch B activated. Stopping down command.");
       break;
     }
   }
 
-  // 4. upコマンド
-  Serial.println("Sequence Step 4: Executing up command");
+  // 3. ステッピングモーターBを0度に回転
+  moveToAngle(PIN_SPI_SS_B, currentAngle_B, 0);
+
+  // 4. upコマンドと同じ動作
   startForward();
   while (motor_running) {
     if (digitalRead(LIMIT_SWITCH_A) == HIGH && switch_A_enabled) {
       stopMotor();
       switch_A_enabled = false;
       switch_B_enabled = true;
-      Serial.println("Switch A activated. Stopping up command.");
       break;
     }
   }
@@ -253,8 +240,8 @@ void startForward() {
   Serial.println("Motor moving forward");
   direction = true;
   motor_running = true;
-  ledcWrite(PWM_CHANNEL_A, PWM_DUTY_CYCLE);
-  ledcWrite(PWM_CHANNEL_B, 0);
+  ledcWrite(PWM_A_PIN, PWM_DUTY_CYCLE);
+  ledcWrite(PWM_B_PIN, 0);
 }
 
 // モーターの逆転
@@ -262,16 +249,16 @@ void startBackward() {
   Serial.println("Motor moving backward");
   direction = false;
   motor_running = true;
-  ledcWrite(PWM_CHANNEL_A, 0);
-  ledcWrite(PWM_CHANNEL_B, PWM_DUTY_CYCLE);
+  ledcWrite(PWM_A_PIN, 0);
+  ledcWrite(PWM_B_PIN, PWM_DUTY_CYCLE);
 }
 
 // モーターを停止
 void stopMotor() {
   Serial.println("Motor stopped");
   motor_running = false;
-  ledcWrite(PWM_CHANNEL_A, 0);
-  ledcWrite(PWM_CHANNEL_B, 0);
+  ledcWrite(PWM_A_PIN, 0);
+  ledcWrite(PWM_B_PIN, 0);
 }
 
 // 数字かどうかを確認
