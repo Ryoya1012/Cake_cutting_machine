@@ -92,12 +92,12 @@ void loop() {
     // コマンドのフォーマットにコロンが含まれている場合
     if (str.indexOf(':') != -1) {
       int colonIndex = str.indexOf(':');
-      String command = str.substring(0, colonIndex); // コマンド部分（例："A"）
-      String angle_str = str.substring(colonIndex + 1); // 角度部分（例："30"）
+      String command = str.substring(0, colonIndex); // コマンド部分（例："B"）
+      String angle_str = str.substring(colonIndex + 1); // 角度部分（例："-30"）
 
       if (isNumber(angle_str)) {
         float angle = angle_str.toFloat();
-        if (command == "A") {
+        if (command == "TARGET") {
           moveToAngle(PIN_SPI_SS_A, currentAngle_A, angle); // モータAを指定角度に回転
           validCommand = true;
           // シーケンス動作を実行
