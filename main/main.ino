@@ -154,8 +154,8 @@ void executeSequence() {
   Serial.println("Starting sequence...");
 
   // 1. ステッピングモーターBを-60度に回転
-  Serial.println("Sequence Step 1: Moving Motor B to -60 degrees");
-  moveToAngle(PIN_SPI_SS_B, currentAngle_B, -80);
+  Serial.println("Sequence Step 1: Moving Motor B to -110 degrees");
+  moveToAngle(PIN_SPI_SS_B, currentAngle_B, -120);
 
   // 2. down動作を開始しつつ、6秒後にステッピングモーターBを0度に移動
   Serial.println("Sequence Step 2: Starting down command and scheduling Motor B to 0 degrees");
